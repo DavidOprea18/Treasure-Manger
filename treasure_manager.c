@@ -100,6 +100,14 @@ void log_operation(const char *hunt_id, const char *operation)
     create_log_symlink(hunt_id);
 }
 
+// ------------------------ CUSTOM PRINT ------------------------ //
+
+void custom_print(const char *message, char *buf, size_t buf_size)
+{
+    write(1, message, strlen(message));
+    read(0, buf, buf_size);
+}
+
 // ------------------------ ADD <HUNT_ID> ------------------------ //
 
 void add_treasure(const char *hunt_id)
@@ -117,18 +125,50 @@ void add_treasure(const char *hunt_id)
     }
 
     TREASURE t;
-    printf("Enter treasure ID: ");
-    scanf("%d", &t.treasure_id);
-    printf("Enter user name: ");
-    scanf("%s", t.user_name);
-    printf("Enter latitude: ");
-    scanf("%f", &t.latitude_coordinates);
-    printf("Enter longitude: ");
-    scanf("%f", &t.longitude_coordinates);
-    printf("Enter clue text: ");
-    scanf("%s", t.clue_text);
-    printf("Enter value: ");
-    scanf("%d", &t.value);
+    char buf[256];
+
+    // TREASURE ID
+    custom_print("Enter treasure ID: ", buf, sizeof(buf));
+    t.treasure_id = atoi(buf);
+
+    // USER NAME
+    custom_print("Enter user name: ", buf, sizeof(buf));
+    buf[strcspn(buf, "\n")] = '\0';
+    strncpy(t.user_name, buf, sizeof(t.user_name) - 1);
+    t.user_name[sizeof(t.user_name) - 1] = '\0';
+
+    // LATITUDE
+    custom_print("Enter latitude: ", buf, sizeof(buf));
+    t.latitude_coordinates = atof(buf);
+
+    // LONGITUDE
+    custom_print("Enter longitude: ", buf, sizeof(buf));
+    t.longitude_coordinates = atof(buf);
+
+    // CLUE TEXT
+    custom_print("Enter clue text: ", buf, sizeof(buf));
+    buf[strcspn(buf, "\n")] = '\0';
+    strncpy(t.clue_text, buf, sizeof(t.clue_text) - 1);
+    t.clue_text[sizeof(t.clue_text) - 1] = '\0';
+
+    // VALUE
+    custom_print("Enter value: ", buf, sizeof(buf));
+    t.value = atoi(buf);
+
+    /*
+printf("Enter treasure ID: ");
+scanf("%d", &t.treasure_id);
+printf("Enter user name: ");
+scanf("%s", t.user_name);
+printf("Enter latitude: ");
+scanf("%f", &t.latitude_coordinates);
+printf("Enter longitude: ");
+scanf("%f", &t.longitude_coordinates);
+printf("Enter clue text: ");
+scanf("%s", t.clue_text);
+printf("Enter value: ");
+scanf("%d", &t.value);
+*/
 
     if (write(fd, &t, sizeof(TREASURE)) != sizeof(TREASURE))
     {
@@ -155,9 +195,22 @@ void list_treasures(const char *hunt_id)
         return;
     }
 
+    char buf[256];
+
+    snprintf(buf, sizeof(buf), "Hunt ID: %s\n", hunt_id);
+    write(1, buf, strlen(buf));
+
+    snprintf(buf, sizeof(buf), "File size: %lld bytes\n", (long long)st.st_size);
+    write(1, buf, strlen(buf));
+
+    snprintf(buf, sizeof(buf), "Last modified: %s\n", ctime(&st.st_mtime));
+    write(1, buf, strlen(buf));
+
+    /*
     printf("Hunt: %s\n", hunt_id);
     printf("File size: %lld bytes\n", st.st_size);
     printf("Last modified: %s\n", ctime(&st.st_mtime));
+    */
 
     int fd = open(file_path, O_RDONLY);
     if (fd == -1)
@@ -169,11 +222,28 @@ void list_treasures(const char *hunt_id)
     TREASURE t;
     while (read(fd, &t, sizeof(TREASURE)) == sizeof(TREASURE))
     {
+        snprintf(buf, sizeof(buf), "Treasure ID: %d\n", t.treasure_id);
+        write(1, buf, strlen(buf));
+
+        snprintf(buf, sizeof(buf), "User name: %s\n", t.user_name);
+        write(1, buf, strlen(buf));
+
+        snprintf(buf, sizeof(buf), "GPS coordinates: (%f, %f)\n", t.latitude_coordinates, t.longitude_coordinates);
+        write(1, buf, strlen(buf));
+
+        snprintf(buf, sizeof(buf), "Clue text: %s\n", t.clue_text);
+        write(1, buf, strlen(buf));
+
+        snprintf(buf, sizeof(buf), "Value: %d\n\n", t.value);
+        write(1, buf, strlen(buf));
+
+        /*
         printf("Treasure ID: %d\n", t.treasure_id);
         printf("User name: %s\n", t.user_name);
         printf("GPS coordinates: (%f, %f)\n", t.latitude_coordinates, t.longitude_coordinates);
         printf("Clue text: %s\n", t.clue_text);
         printf("Value: %d\n\n", t.value);
+        */
     }
 
     close(fd);
@@ -195,16 +265,35 @@ void view_treasure(const char *hunt_id, int treasure_id)
     }
 
     TREASURE t;
+    char buf[256];
+
     int found = 0;
     while (read(fd, &t, sizeof(TREASURE)) == sizeof(TREASURE))
     {
         if (t.treasure_id == treasure_id)
         {
+            snprintf(buf, sizeof(buf), "Treasure ID: %d\n", t.treasure_id);
+            write(1, buf, strlen(buf));
+
+            snprintf(buf, sizeof(buf), "User name: %s\n", t.user_name);
+            write(1, buf, strlen(buf));
+
+            snprintf(buf, sizeof(buf), "GPS coordinates: (%f, %f)\n", t.latitude_coordinates, t.longitude_coordinates);
+            write(1, buf, strlen(buf));
+
+            snprintf(buf, sizeof(buf), "Clue text: %s\n", t.clue_text);
+            write(1, buf, strlen(buf));
+
+            snprintf(buf, sizeof(buf), "Value: %d\n", t.value);
+            write(1, buf, strlen(buf));
+
+            /*
             printf("Treasure ID: %d\n", t.treasure_id);
             printf("User name: %s\n", t.user_name);
             printf("GPS coordinates: (%f, %f)\n", t.latitude_coordinates, t.longitude_coordinates);
             printf("Clue text: %s\n", t.clue_text);
             printf("Value: %d\n", t.value);
+            */
             found = 1;
             break;
         }
