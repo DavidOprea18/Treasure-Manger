@@ -9,6 +9,17 @@
 #include <dirent.h>
 #include <sys/types.h> 
 
+// ------------------------ STRUCT ------------------------ //
+
+typedef struct {
+    int treasure_id;
+    char user_name[50];
+    float latitude_coordinates;
+    float longitude_coordinates;
+    char clue_text[100];
+    int value;
+} TREASURE;
+
 // ------------------------ global variables ------------------------ //
 
 pid_t monitor_pid = -1;
@@ -56,12 +67,44 @@ void list_hunts()
 
         if (S_ISDIR(st.st_mode))
         {
+            //create path for treasures
+            char treasure_path[256];
+            snprintf(treasure_path, sizeof(treasure_path), "%s/treasures.bin", path);
+
+            //number of treasures in hunt
+            int fd = open(treasure_path, O_RDONLY);
+            if (fd == -1)
+            {
+                perror("Failed to open treasures file");
+                continue;
+            }
+            int treasure_count = 0;
+            TREASURE t;
+            while (read(fd, &t, sizeof(TREASURE)) == sizeof(TREASURE))
+            {
+                treasure_count++;
+            }
+            close(fd);
+
+            //error if no treasures
+            if (treasure_count == 0)
+            {
+                write(1, "Error: No treasures found in hunt\n", strlen("Error: No treasures found in hunt\n"));
+                continue;
+            }
+
+            //print hunt name and number of treasures
+            char treasure_count_str[16];
+            snprintf(treasure_count_str, sizeof(treasure_count_str), "%d", treasure_count);
+
             write(1, "Hunt: ", strlen("Hunt: "));
             write(1, dp->d_name, strlen(dp->d_name));
+            write(1, " - Tresures: ", strlen(" - Treasures: "));
+            write(1, treasure_count_str, strlen(treasure_count_str));
             write(1, "\n", 1);
         }
     }
-
+    write(1, "\n", 1);
     closedir(dir);
 
     kill(getppid(), SIGTERM);
@@ -153,13 +196,6 @@ void view_treasure()
     kill(getppid(), SIGTERM);
 }
 
-// ------------------------ handler - terminate ------------------------ //
-
-void handler_terminate()
-{
-    write(1, "Monitor terminated\n", strlen("Monitor terminated\n"));
-    exit(0);
-}
 
 // ------------------------ Start Monitor ------------------------ //
 
@@ -170,41 +206,41 @@ void start_monitor()
         write(1, "Monitor is already running\n", strlen("Monitor is already running\n"));
         return;
     }
-
+    
     monitor_pid = fork();
-
+    
     if (monitor_pid < 0)
     {
         perror("Failed to fork monitor\n");
         exit(-1);
     }
-
+    
     if (monitor_pid == 0)
     {
-        write(1, "Monitor started\n", strlen("Monitor started\n"));
-
+        write(1, "Monitor started\n\n", strlen("Monitor started\n\n"));
+        
         struct sigaction sig;
-
+        
         sig.sa_handler = handler_terminate;
         sig.sa_flags = 0;
         sigemptyset(&sig.sa_mask);
         sigaction(SIGTERM, &sig, NULL);
-
+        
         sig.sa_handler = list_hunts;
         sig.sa_flags = 0;
         sigemptyset(&sig.sa_mask);
         sigaction(SIGUSR1, &sig, NULL);
-
+        
         sig.sa_handler = list_treasures;
         sig.sa_flags = 0;
         sigemptyset(&sig.sa_mask);
         sigaction(SIGUSR2, &sig, NULL);
-
+        
         sig.sa_handler = view_treasure;
         sig.sa_flags = 0;
         sigemptyset(&sig.sa_mask);
         sigaction(SIGINT, &sig, NULL);
-
+        
         while (1)
         {
             pause();
@@ -212,19 +248,12 @@ void start_monitor()
     }
 }
 
-// ------------------------ Send Signal ------------------------ //
+// ------------------------ handler - terminate ------------------------ //
 
-void send_signal(int sig)
+void handler_terminate()
 {
-    if (monitor_pid == -1)
-    {
-        write(1, "Monitor is not running\n", strlen("Monitor is not running\n"));
-        return;
-    }
-    if (kill(monitor_pid, sig) == -1)
-    {
-        write(1, "Error sending signal\n", strlen("Error sending signal\n"));
-    }
+    write(1, "Monitor terminated\n\n", strlen("Monitor terminated\n\n"));
+    exit(0);
 }
 
 // ------------------------ Stop Monitor ------------------------ //
@@ -265,32 +294,61 @@ int main()
     {
         buff[strcspn(buff, "\n")] = '\0';
 
+        // start_monitor
         if (strcmp(buff, "start_monitor") == 0)
         {
             start_monitor();
         }
+
+        // list_hunts   
         else if (strcmp(buff, "list_hunts") == 0)
         {
             ok = 0;
-            send_signal(SIGUSR1);
-            while(!ok)pause();
+            if (monitor_pid != -1) {
+                if (kill(monitor_pid, SIGUSR1) == -1) {
+                    write(1, "Error sending signal\n", strlen("Error sending signal\n"));
+                }
+            } else {
+                write(1, "Monitor is not running\n", strlen("Monitor is not running\n"));
+            }
+            while(!ok) pause();
         }
+
+        // list_treasures
         else if (strcmp(buff, "list_treasures") == 0)
         {
             ok = 0;
-            send_signal(SIGUSR2);
-            while(!ok)pause();
+            if (monitor_pid != -1) {
+                if (kill(monitor_pid, SIGUSR2) == -1) {
+                    write(1, "Error sending signal\n", strlen("Error sending signal\n"));
+                }
+            } else {
+                write(1, "Monitor is not running\n", strlen("Monitor is not running\n"));
+            }
+            while(!ok) pause();
         }
+
+        // view_treasure
         else if (strcmp(buff, "view_treasure") == 0)
         {
             ok = 0;
-            send_signal(SIGINT);
-            while(!ok)pause();
+            if (monitor_pid != -1) {
+                if (kill(monitor_pid, SIGINT) == -1) {
+                    write(1, "Error sending signal\n", strlen("Error sending signal\n"));
+                }
+            } else {
+                write(1, "Monitor is not running\n", strlen("Monitor is not running\n"));
+            }
+            while(!ok) pause();
         }
+
+        //stop_monitor
         else if (strcmp(buff, "stop_monitor") == 0)
         {
             stop_monitor();
         }
+
+        //exit
         else if (strcmp(buff, "exit") == 0)
         {
             write(1, "Exiting...\n", strlen("Exiting...\n"));
@@ -298,6 +356,8 @@ int main()
                 break;
             write(1, "Monitor still running...\n", strlen("Monitor still running...\n"));
         }
+
+        //invalid command
         else
         {
             write(1, "Invalid command\n", strlen("Invalid command\n"));
