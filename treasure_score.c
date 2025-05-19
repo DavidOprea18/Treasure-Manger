@@ -101,7 +101,10 @@ int main(int argc, char **argv)
             }
             close(fd);
 
-            printf("%s:\n", dp->d_name);
+            char directory_name[256];
+            snprintf(directory_name, sizeof(directory_name), "%s:\n", dp->d_name);
+            write(1, directory_name, strlen(directory_name));
+
             if (user_count == 0)
             {
                 printf("No treasures found\n");
@@ -110,10 +113,12 @@ int main(int argc, char **argv)
             {
                 for (int i = 0; i < user_count; i++)
                 {
-                    printf("%s - score %d\n", user_scores[i].user_name, user_scores[i].score);
+                    char score_str[70];
+                    snprintf(score_str, sizeof(score_str), "%s - score %d\n", user_scores[i].user_name, user_scores[i].score);
+                    write(1, score_str, strlen(score_str));
                 }
             }
-            printf("\n");
+            write(1, "\n", 1);
         }
     }
 
