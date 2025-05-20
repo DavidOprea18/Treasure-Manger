@@ -462,7 +462,8 @@ int main()
                 }
                 else
                 {
-
+                    while (!ok)
+                        pause();
                     char buffer[1024];
                     read(pipe_fd[0], buffer, sizeof(buffer));
                     write(1, buffer, strlen(buffer));
@@ -472,8 +473,6 @@ int main()
             {
                 write(1, "Monitor is not running\n", strlen("Monitor is not running\n"));
             }
-            while (!ok)
-                pause();
         }
 
         // view_treasure
@@ -488,6 +487,8 @@ int main()
                 }
                 else
                 {
+                    while (!ok)
+                        pause();
                     char buffer[1024];
                     read(pipe_fd[0], buffer, sizeof(buffer));
                     write(1, buffer, strlen(buffer));
@@ -497,8 +498,6 @@ int main()
             {
                 write(1, "Monitor is not running\n", strlen("Monitor is not running\n"));
             }
-            while (!ok)
-                pause();
         }
 
         // stop_monitor
@@ -519,7 +518,7 @@ int main()
         // invalid command
         else
         {
-            write(1, "Invalid command\n", strlen("Invalid command\n"));
+            write(1, "Invalid command\n\n", strlen("Invalid command\n\n"));
         }
     }
 
